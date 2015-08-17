@@ -61,24 +61,47 @@
     return [[self alloc] initWithFrame:frame indexTitles:indexTitles];
 }
 
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    return [self initWithFrame:frame indexTitles:nil];
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self commonInitWithFrame:self.frame indexTitles:nil];
+    }
+    return self;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame indexTitles:(NSArray *)indexTitles {
     self = [super initWithFrame:frame];
     if (!self) return nil;
 
-	if (CGRectGetWidth(frame) > CGRectGetHeight(frame)) {
+    [self commonInitWithFrame:frame indexTitles:indexTitles];
+    return self;
+}
+
+- (void)commonInitWithFrame:(CGRect)frame indexTitles:(NSArray *)indexTitles
+{
+    if (CGRectGetWidth(frame) > CGRectGetHeight(frame)) {
         _direction = BDKCollectionIndexViewDirectionHorizontal;
-	} else {
-		_direction = BDKCollectionIndexViewDirectionVertical;
-	}
-
+    } else {
+        _direction = BDKCollectionIndexViewDirectionVertical;
+    }
+    
     _currentIndex = 0;
-	_touchStatusViewAlpha = 0.25;
-	_touchStatusBackgroundColor = [UIColor blackColor];
-	self.tintColor = [UIColor blackColor];
-    self.backgroundColor = [UIColor clearColor];
-	
+    _touchStatusViewAlpha = 0.25;
+    
+    if(!_touchStatusBackgroundColor)
+        _touchStatusBackgroundColor = [UIColor blackColor];
+    
+    if(!self.backgroundColor)
+       self.backgroundColor = [UIColor clearColor];
+    
     SEL handleGestureSelector = @selector(handleGesture:);
-
+    
     _panner = [[UIPanGestureRecognizer alloc] initWithTarget:self action:handleGestureSelector];
     _panner.delegate = self;
     [self addGestureRecognizer:_panner];
@@ -87,11 +110,11 @@
     [self addGestureRecognizer:_tapper];
     
     _longPresser = [[UILongPressGestureRecognizer alloc] initWithTarget:self
-																 action:handleGestureSelector];
+                                                                 action:handleGestureSelector];
     _longPresser.delegate = self;
     _longPresser.minimumPressDuration = 0.01f;
     [self addGestureRecognizer:_longPresser];
-
+    
     [self addSubview:self.touchStatusView];
     
     self.indexTitles = indexTitles;
@@ -100,7 +123,6 @@
     self.accessibilityTraits = UIAccessibilityTraitAdjustable;
     self.accessibilityLabel = NSLocalizedString(@"table index", @"title given to the section index control");
 
-    return self;
 }
 
 - (void)layoutSubviews {
@@ -200,6 +222,12 @@
     }
     NSString *annoucement = [NSString stringWithFormat:@"%@ ,%@", titleToAnnounce, selectedString];
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, annoucement);
+}
+
+
+- (void)prepareForInterfaceBuilder
+{
+    self.indexTitles = @[@"A",@"B",@"C"];
 }
 
 #pragma mark - Properties

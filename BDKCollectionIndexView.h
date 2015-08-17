@@ -15,9 +15,10 @@ typedef NS_ENUM(NSInteger, BDKCollectionIndexViewDirection) {
  view the index title bar that a UITableView gets for (almost) free. A huge thank you to
  @Yang from http://stackoverflow.com/a/14443540/194869, which saved my bacon here.
  */
+
 @interface BDKCollectionIndexView : UIControl
 
-@property (weak, nonatomic) id<BDKCollectionIndexViewDelegate> delegate;
+@property (weak, nonatomic) IBOutlet id<BDKCollectionIndexViewDelegate> delegate;
 
 /**
  A collection of string values that represent section index titles.
@@ -47,7 +48,7 @@ typedef NS_ENUM(NSInteger, BDKCollectionIndexViewDirection) {
 /**
  The background color of the "touch status view" that appears when the view is touched.
  */
-@property (strong, nonatomic) UIColor *touchStatusBackgroundColor;
+@property (strong, nonatomic) IBInspectable UIColor *touchStatusBackgroundColor;
 
 /**
  The amount of alpha applied to the "touch status view" that appears when the view is touched.
