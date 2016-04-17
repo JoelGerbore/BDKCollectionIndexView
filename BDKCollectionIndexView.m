@@ -50,55 +50,49 @@
 @implementation BDKCollectionIndexView
 
 @synthesize
-	delegate = _delegate,
-	currentIndex = _currentIndex,
-	touchStatusBackgroundColor = _touchStatusBackgroundColor,
-    touchStatusViewAlpha = _touchStatusViewAlpha,
-    font = _font,
-    direction = _direction;
+delegate = _delegate,
+currentIndex = _currentIndex,
+touchStatusBackgroundColor = _touchStatusBackgroundColor,
+touchStatusViewAlpha = _touchStatusViewAlpha,
+font = _font,
+direction = _direction;
 
 + (instancetype)indexViewWithFrame:(CGRect)frame indexTitles:(NSArray *)indexTitles {
     return [[self alloc] initWithFrame:frame indexTitles:indexTitles];
 }
 
-- (instancetype)initWithFrame:(CGRect)frame
+-(instancetype)initWithCoder:(NSCoder *)aDecoder
 {
-    return [self initWithFrame:frame indexTitles:nil];
-}
-
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
-    self = [super initWithCoder:coder];
-    if (self) {
-        [self commonInitWithFrame:self.frame indexTitles:nil];
-    }
+    self = [super initWithCoder:aDecoder];
+    if (!self) return nil;
+    
+    [self setupWithIndexTitles:nil];
+    
     return self;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame indexTitles:(NSArray *)indexTitles {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-
-    [self commonInitWithFrame:frame indexTitles:indexTitles];
-    return self;
-}
-
-- (void)commonInitWithFrame:(CGRect)frame indexTitles:(NSArray *)indexTitles
-{
+    
     if (CGRectGetWidth(frame) > CGRectGetHeight(frame)) {
         _direction = BDKCollectionIndexViewDirectionHorizontal;
     } else {
         _direction = BDKCollectionIndexViewDirectionVertical;
     }
     
+    [self setupWithIndexTitles:indexTitles];
+    
+    return self;
+}
+
+-(void)setupWithIndexTitles:(NSArray *)indexTitles {
+    
     _currentIndex = 0;
     _touchStatusViewAlpha = 0.25;
-    
-    if(!_touchStatusBackgroundColor)
-        _touchStatusBackgroundColor = [UIColor blackColor];
-    
-    if(!self.backgroundColor)
-       self.backgroundColor = [UIColor clearColor];
+    _touchStatusBackgroundColor = [UIColor blackColor];
+    self.tintColor = [UIColor blackColor];
+    self.backgroundColor = [UIColor clearColor];
     
     SEL handleGestureSelector = @selector(handleGesture:);
     
@@ -122,7 +116,6 @@
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitAdjustable;
     self.accessibilityLabel = NSLocalizedString(@"table index", @"title given to the section index control");
-
 }
 
 - (void)layoutSubviews {
@@ -184,12 +177,12 @@
 }
 
 - (void)tintColorDidChange {
-	if (self.tintAdjustmentMode == UIViewTintAdjustmentModeDimmed) {
-		[self.indexLabels makeObjectsPerformSelector:@selector(setTextColor:)
-										  withObject:[UIColor lightGrayColor]];
-	} else {
-		[self.indexLabels makeObjectsPerformSelector:@selector(setTextColor:)
-										  withObject:self.tintColor];
+    if (self.tintAdjustmentMode == UIViewTintAdjustmentModeDimmed) {
+        [self.indexLabels makeObjectsPerformSelector:@selector(setTextColor:)
+                                          withObject:[UIColor lightGrayColor]];
+    } else {
+        [self.indexLabels makeObjectsPerformSelector:@selector(setTextColor:)
+                                          withObject:self.tintColor];
     }
 }
 
@@ -224,19 +217,13 @@
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, annoucement);
 }
 
-
-- (void)prepareForInterfaceBuilder
-{
-    self.indexTitles = @[@"A",@"B",@"C"];
-}
-
 #pragma mark - Properties
 
 - (UIView *)touchStatusView {
     if (_touchStatusView) return _touchStatusView;
     _touchStatusView = [[UIView alloc] initWithFrame:CGRectInset(self.bounds, 2, 2)];
     _touchStatusView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0];
-	
+    
     CGFloat dimension;
     switch (_direction) {
         case BDKCollectionIndexViewDirectionHorizontal:
@@ -244,7 +231,7 @@
         case BDKCollectionIndexViewDirectionVertical:
             dimension = CGRectGetWidth(self.bounds);
     }
-	
+    
     _touchStatusView.layer.cornerRadius = dimension / 2;
     _touchStatusView.layer.masksToBounds = YES;
     return _touchStatusView;
@@ -253,7 +240,7 @@
 - (void)setIndexTitles:(NSArray *)indexTitles {
     if (_indexTitles == indexTitles) return;
     _indexTitles = indexTitles;
-	[self reloadData];
+    [self reloadData];
 }
 
 - (void)reloadData {
@@ -301,10 +288,28 @@
 - (void)setNewIndexForPoint:(CGPoint)point {
     NSInteger newIndex = -1;
     
+    BOOL (^matchesPoint)(UIView *) = ^(UIView *view) { return YES; };
+    
+    switch (_direction) {
+        case BDKCollectionIndexViewDirectionHorizontal:
+            matchesPoint = ^BOOL(UIView *view) {
+                return (point.x >= CGRectGetMinX(view.frame) &&
+                        point.x <= CGRectGetMaxX(view.frame));
+            };
+            break;
+            
+        case BDKCollectionIndexViewDirectionVertical:
+            matchesPoint = ^BOOL(UIView *view) {
+                return (point.y >= CGRectGetMinY(view.frame) &&
+                        point.y <= CGRectGetMaxY(view.frame));
+            };
+            break;
+    }
+    
     for (UILabel *view in self.indexLabels) {
-		if (!CGRectContainsPoint(view.frame, point)) { continue; }
-		newIndex = view.tag;
-		break;
+        if (!matchesPoint(view)) { continue; }
+        newIndex = view.tag;
+        break;
     }
     
     if (newIndex == -1) {
@@ -334,23 +339,23 @@
 - (void)handleGesture:(UIGestureRecognizer *)recognizer {
     [self setBackgroundVisibility:!(recognizer.state == UIGestureRecognizerStateEnded)];
     [self setNewIndexForPoint:[recognizer locationInView:self]];
-	
-	if (recognizer != _longPresser) { return; }
-	if (recognizer.state == UIGestureRecognizerStateEnded) {
-		if ([self.delegate respondsToSelector:@selector(collectionIndexView:liftedFingerFromIndex:)]) {
-			[self.delegate collectionIndexView:self liftedFingerFromIndex:self.currentIndex];
-		}
-	} else {
-		if ([self.delegate respondsToSelector:@selector(collectionIndexView:isPressedOnIndex:indexTitle:)]) {
-			
-			[self.delegate collectionIndexView:self isPressedOnIndex:self.currentIndex indexTitle:self.currentIndexTitle];
-		}
-	}
-	
+    
+    if (recognizer != _longPresser) { return; }
+    if (recognizer.state == UIGestureRecognizerStateEnded) {
+        if ([self.delegate respondsToSelector:@selector(collectionIndexView:liftedFingerFromIndex:)]) {
+            [self.delegate collectionIndexView:self liftedFingerFromIndex:self.currentIndex];
+        }
+    } else {
+        if ([self.delegate respondsToSelector:@selector(collectionIndexView:isPressedOnIndex:indexTitle:)]) {
+            
+            [self.delegate collectionIndexView:self isPressedOnIndex:self.currentIndex indexTitle:self.currentIndexTitle];
+        }
+    }
+    
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
-	shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
+shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer {
     return gestureRecognizer != _longPresser;
 }
 
