@@ -312,7 +312,7 @@ direction = _direction;
         break;
     }
     
-    if (newIndex == -1) {
+    if (newIndex == -1 && self.indexLabels.count > 0) {
         UILabel *topLabel = self.indexLabels[0];
         UILabel *bottomLabel = self.indexLabels[self.indexLabels.count - 1];
         
